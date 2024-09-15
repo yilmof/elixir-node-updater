@@ -1,4 +1,5 @@
 import discord
+import requests
 import subprocess
 import re
 import logging
@@ -38,8 +39,22 @@ async def execute_bash_script(channel):
         stdout, stderr = process.communicate()
 
         if process.returncode == 0:
-            logging.info("Script executed successfully.")
-            await channel.send("✅ The validator update was successful!")
+            await asyncio.sleep(15)
+            response = requests.get('http://localhost:17690/metrics')
+
+            if response.status_code == 200:
+                data = response.json()
+
+                app_version = data.get('app_version')
+                status = data.get('status')
+
+                app_version, status
+                logging.info("Script executed successfully.")
+                await channel.send(f"✅ The validator update was successful! Updated to version {app_version} with status: {status}")
+            else:
+                logging.info("Script executed successfully but couldn't fetch metrics.")
+                await channel.send(f"✅ The validator update was successful! Couldn't fetch metrics.")
+
         else:
             error_message = stderr.decode('utf-8')
             logging.error(f"Script failed with error: {error_message}")
@@ -47,6 +62,19 @@ async def execute_bash_script(channel):
     except Exception as e:
         logging.error(f"An error occurred while executing the script: {e}")
         await channel.send(f"❌ An error occurred while trying to run the update script:\n```{e}```")
+
+async def fetch_metrics():
+    url = 'http://localhost:17690/metrics'
+
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        app_version = data.get('app_version')
+        status = data.get('status')
+
+        return app_version, status
 
 @client.event
 async def on_ready():
